@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
 # disable debian interactive
 ARG DEBIAN_FRONTEND=noninteractive
@@ -6,9 +6,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG PIP_DISABLE_PIP_VERSION_CHECK=1
 # disable cache directory, image size 2.1GB to 1.9GB
 ARG PIP_NO_CACHE_DIR=1
-ARG UV_NO_CACHE_DIR=1
 
-RUN apt-get update && apt-get -y upgrade && apt-get install --no-install-recommends -y  \
+RUN apt-get update && apt-get -y upgrade
+
+RUN apt-get install --no-install-recommends -y  \
     python3-dev python3-wheel python3-setuptools virtualenv \
     build-essential gcc curl \
     libpq-dev libpq5 telnet \
@@ -19,7 +20,7 @@ RUN apt-get update && apt-get -y upgrade && apt-get install --no-install-recomme
     libjemalloc2
 
 # Pillow dependencies
-RUN apt-get install --no-install-recommends -y \
+RUN apt-get install  --no-install-recommends -y \
     libtiff5-dev libjpeg-dev libopenjp2-7-dev zlib1g-dev  \
     libfreetype6-dev liblcms2-dev libwebp-dev tcl8.6-dev  \
     tk8.6-dev python3-tk libharfbuzz-dev libfribidi-dev libxcb1-dev
@@ -34,7 +35,7 @@ ENV APP_USER=app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONBUFFERED=1
 # Run python with jemalloc
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 
 RUN useradd -m -d ${APP_DIR} -U -r -s /bin/bash ${APP_USER}
 
@@ -47,14 +48,19 @@ RUN python -m venv /app/env
 # Activate the virtual environment
 ENV PATH="$APP_DIR/env/bin:$PATH"
 
-COPY --chown=$APP_USER pyproject.toml .
+COPY scripts/base.txt base.txt
+COPY scripts/production.txt requirements.txt
 
-RUN pip install -U pip uv wheel && uv pip install -r pyproject.toml --extra prod
+RUN pip install -U pip wheel
+
+RUN pip install -r requirements.txt
 
 # copy code to image
 COPY --chown=$APP_USER . .
 
-COPY --chown=$APP_USER config/docker/slim/*.sh .
+COPY --chown=$APP_USER config/docker/slim/docker-entrypoint.sh docker-entrypoint.sh
+
+COPY --chown=$APP_USER config/docker/slim/docker-entrypoint-celery.sh docker-entrypoint-celery.sh
 
 RUN mkdir -p public/static && mkdir -p public/media && mkdir -p logs/
 

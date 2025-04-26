@@ -1,43 +1,51 @@
-from django.utils.translation import gettext as _
-from django.shortcuts import render
-from django.http import JsonResponse
+# -*- encoding: utf-8 -*-
+from __future__ import unicode_literals
+from django.utils.translation import gettext_lazy as _
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from django.conf import settings
 
-from main.core.tools import require_post_ajax
-from main.core.smpp import Filters
+import json
+
+from main.core.smpp import TelnetConnection, Filters
 
 
 @login_required
 def filters_view(request):
-    context = {
-        "filter_types": Filters.FILTER_TYPES,
-    }
-    return render(request, "web/content/filters.html", context)
+    return render(request, "web/content/filters.html")
 
 
-@require_post_ajax
+@login_required
 def filters_view_manage(request):
-    filters = Filters()
-    s = request.POST.get("s")
-    if s == "list":
-        response = filters.list()
-    elif s == "add":
-        filter_type = request.POST.get("type")
-        data_filter = {
-            "fid": request.POST.get("fid"),
-            "type": filter_type,
-        }
-        
-        if filter_type != "transparentfilter":
-            data_filter['parameter'] = request.POST.get("parameter")
-        
-        response = filters.create(data=data_filter)
-        response["message"] = str(_("Filter added successfully!"))
-    elif s == "delete":
-        response = filters.destroy(fid=request.POST.get("fid"))
-        response["message"] = str(_("Filter deleted successfully!"))
+    args, res_status, res_message = {}, 400, _("Sorry, Command does not matched.")
+    filters = None
+    if request.POST and request.is_ajax():
+        s = request.POST.get("s")
+        if s in ['list', 'add', 'delete']:
+            filters = Filters(telnet=request.telnet)
+        if filters:
+            if s == "list":
+                args = filters.list()
+                res_status, res_message = 200, _("OK")
+            elif s == "add":
+                try:
+                    filters.create(data=dict(
+                        fid=request.POST.get("fid"),
+                        type=request.POST.get("type"),
+                        parameter=request.POST.get("parameter"),
+                    ))
+                    res_status, res_message = 200, _("Filter added successfully!")
+                except Exception as e:
+                    res_message = str(e)
+            elif s == "delete":
+                args = filters.destroy(fid=request.POST.get("fid"))
+                res_status, res_message = 200, _("Filter deleted successfully!")
+    if isinstance(args, dict):
+        args["status"] = res_status
+        args["message"] = str(res_message)
     else:
-        return JsonResponse({"message": str(_("Sorry, Command does not matched.")), "status": 400}, status=400)
-
-    response["status"] = 200
-    return JsonResponse(response, status=200)
+        res_status = 200
+    return HttpResponse(json.dumps(args), status=res_status, content_type="application/json")

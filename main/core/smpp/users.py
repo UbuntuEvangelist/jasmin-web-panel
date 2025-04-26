@@ -4,7 +4,6 @@ from main.core.tools import set_ikeys
 from main.core.exceptions import (JasminSyntaxError, JasminError,
                         UnknownError, MissingKeyError,
                         ObjectNotFoundError)
-from .conn import TelnetConnection
 
 import logging
 
@@ -13,10 +12,11 @@ INTERACTIVE_PROMPT = settings.INTERACTIVE_PROMPT
 
 logger = logging.getLogger(__name__)
 
-class Users(TelnetConnection):
+class Users(object):
     "Users for managing *Jasmin* users (*not* Django auth users)"
     lookup_field = 'uid'
-    
+    def __init__(self, telnet):
+        self.telnet = telnet
     def get_user(self, uid, silent=False):
         """Gets a single users data
         silent supresses Http404 exception if user not found"""
@@ -211,6 +211,7 @@ class Users(TelnetConnection):
         """
         return self.simple_user_action('r', uid, return_user=False)
 
+    # methods=['put']
     def enable(self, uid):
         """Enable a user. One parameter required, the user identifier (a string)
 
@@ -222,6 +223,7 @@ class Users(TelnetConnection):
         """
         return self.simple_user_action('e', uid)
 
+    # methods=['put']
     def disable(self, uid):
         """Disable a user.
 
@@ -235,6 +237,7 @@ class Users(TelnetConnection):
         """
         return self.simple_user_action('d', uid)
 
+    # methods=['put']
     def smpp_unbind(self, uid):
         """Unbind user from smpp server
 
@@ -248,6 +251,7 @@ class Users(TelnetConnection):
         """
         return self.simple_user_action('-smpp-unbind', uid)
 
+    # methods=['put']
     def smpp_ban(self, uid):
         """Unbind and ban user from smpp server
 

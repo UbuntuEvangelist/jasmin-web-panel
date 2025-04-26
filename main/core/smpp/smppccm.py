@@ -5,7 +5,6 @@ from main.core.exceptions import (
     JasminSyntaxError, JasminError, ActionFailed,
     ObjectNotFoundError, UnknownError, 
 )
-from .conn import TelnetConnection
 
 import logging
 
@@ -14,10 +13,12 @@ INTERACTIVE_PROMPT = settings.INTERACTIVE_PROMPT
 
 logger = logging.getLogger(__name__)
 
-class SMPPCCM(TelnetConnection):
+class SMPPCCM(object):
     "SMPPCCM for managing SMPP Client Connectors"
     lookup_field = 'cid'
-
+    def __init__(self, telnet):
+        #print(type(telnet))
+        self.telnet = telnet
     def get_smppccm(self, cid, silent=False):
         #Some of this could be abstracted out - similar pattern in users.py
         self.telnet.sendline('smppccm -s ' + cid)
@@ -207,6 +208,7 @@ class SMPPCCM(TelnetConnection):
 
         return {'connector': self.get_smppccm(cid, silent=False)}
 
+    # methods=['put']
     def start(self, cid):
         """Start SMPP Connector
 
@@ -220,6 +222,7 @@ class SMPPCCM(TelnetConnection):
         """
         return self.simple_smppccm_action('1', cid)
 
+    # methods=['put']
     def stop(self, cid):
         """Stop SMPP Connector
 
